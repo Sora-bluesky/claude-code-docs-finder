@@ -9,22 +9,15 @@ HTMLファイル1つで動作し、claude.ai の Artifact として使う。
 
 キーワード検索ではなく **意味検索** なので、「エージェントチームについて知りたい」と入力すれば `agent-teams` のページがヒットする。
 
-## 使い方（PC推奨）
+## 使い方（PCのみ）
 
 1. このリポジトリの `claude-code-docs-search.html` を開く
 2. 右上の **「Download raw file」** ボタンでダウンロード
-3. [claude.ai](https://claude.ai) を開く
+3. PCブラウザで [claude.ai](https://claude.ai) を開く
 4. チャット欄にHTMLファイルを添付して **「このHTMLをArtifactとして開いて」** と送信
 5. Artifactが表示されたら、検索ボックスに日本語で質問を入力
 
-### スマホの場合
-
-1. スマホのブラウザでこのリポジトリの `claude-code-docs-search.html` を開く
-2. 表示されたコードを全選択してコピー
-3. Claude.aiアプリを開く
-4. チャット欄に貼り付けて **「このHTMLをArtifactとして開いて」** と送信
-
-> **注意**: スマホのClaude.aiアプリではArtifactの挙動がPCと異なり、エラーが出る場合があります。安定して使うにはPCがおすすめです。
+> **スマホでは動きません。** モバイルアプリのArtifact環境はAPIリクエストの中継方式がPC版と異なり、レスポンス形式が変わるためJSONパースに失敗します。
 
 ## 必要なもの
 
