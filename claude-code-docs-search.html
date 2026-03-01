@@ -448,7 +448,7 @@ JSON形式のみで返答してください（前後に説明文不要）。
       const toolResults = toolUseBlocks.map(b => ({ type: 'tool_result', tool_use_id: b.id, content: '' }));
       const res2 = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json", "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 2000,
@@ -494,7 +494,7 @@ JSON形式のみで返答してください（前後に説明文不要）。
     resultsEl.innerHTML = html;
 
   } catch (e) {
-    resultsEl.innerHTML = `<div class="state-msg"><div class="icon">⚠️</div>エラーが発生しました。<br>もう一度試してください。</div>`;
+    resultsEl.innerHTML = `<div class="state-msg"><div class="icon">⚠️</div>エラーが発生しました。<br>${e.message}<br><br><span style="font-size:11px;color:var(--muted)">PCのclaude.aiで試すと安定します</span></div>`;
     console.error(e);
   } finally {
     searchBtn.disabled = false;
