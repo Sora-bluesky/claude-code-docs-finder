@@ -4,5 +4,7 @@
 # Allow HTML files
 !*.html
 
-# Allow .gitignore itself
+# Allow repo essentials
 !.gitignore
+!README.md
+!LICENSE
