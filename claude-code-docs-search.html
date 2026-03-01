@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Docs Finder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+
+  :root {
+    --bg: #f5f5f0;
+    --surface: #ffffff;
+    --border: #e0e0d8;
+    --accent: #d45f2e;
+    --accent2: #5b4fd4;
+    --text: #1a1a2e;
+    --muted: #7a7a8a;
+    --card-bg: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(91,79,212,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,79,212,0.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  header {
+    margin-bottom: 48px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(232,117,74,0.12);
+    border: 1px solid rgba(232,117,74,0.3);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    letter-spacing: 0.08em;
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(24px, 5vw, 40px);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #5b4fd4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.6;
+  }
+
+  .subtitle code {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 56px 16px 20px;
+    font-size: 15px;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 3px rgba(124,106,245,0.12);
+  }
+
+  .search-input::placeholder { color: var(--muted); }
+
+  .search-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.1s;
+    color: white;
+    font-size: 16px;
+  }
+
+  .search-btn:hover { background: #d4623a; }
+  .search-btn:active { transform: translateY(-50%) scale(0.95); }
+  .search-btn:disabled { background: var(--muted); cursor: not-allowed; }
+
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .hint span {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    margin: 0 2px;
+  }
+  .hint span:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Results */
+  #results { min-height: 200px; }
+
+  .state-msg {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .state-msg .icon { font-size: 36px; margin-bottom: 12px; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .results-count strong { color: var(--accent); }
+
+  .cards { display: grid; gap: 12px; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    animation: fadeUp 0.3s ease both;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .card:hover {
+    border-color: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(91,79,212,0.12);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:nth-child(1) { animation-delay: 0ms; }
+  .card:nth-child(2) { animation-delay: 40ms; }
+  .card:nth-child(3) { animation-delay: 80ms; }
+  .card:nth-child(4) { animation-delay: 120ms; }
+  .card:nth-child(5) { animation-delay: 160ms; }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .relevance {
+    flex-shrink: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+
+  .rel-high { color: #4ade80; border-color: rgba(74,222,128,0.3); background: rgba(74,222,128,0.06); }
+  .rel-mid  { color: var(--accent); border-color: rgba(232,117,74,0.3); background: rgba(232,117,74,0.06); }
+  .rel-low  { color: var(--muted); border-color: var(--border); background: transparent; }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .card-reason {
+    font-size: 12px;
+    color: var(--accent2);
+    background: rgba(124,106,245,0.08);
+    border: 1px solid rgba(124,106,245,0.2);
+    border-radius: 5px;
+    padding: 8px 12px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .card-url {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-url::before {
+    content: '→';
+    color: var(--accent);
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    transition: transform 0.3s;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+
+    <h1>Claude Code<br>Docs Finder</h1>
+    <p class="subtitle">知りたいことを日本語で入力すると、最適な公式ドキュメントをAIが推薦します。</p>
+  </header>
+
+  <div class="search-wrap">
+    <input
+      type="text"
+      class="search-input"
+      id="query"
+      placeholder="例：MCP サーバーの設定方法を知りたい"
+      autocomplete="off"
+    />
+    <button class="search-btn" id="searchBtn" title="検索">↑</button>
+  </div>
+
+  <div class="hint">
+    試してみる：
+    <span onclick="setQuery('インストール方法')">インストール方法</span>
+    <span onclick="setQuery('コスト・料金を抑えたい')">コスト削減</span>
+    <span onclick="setQuery('GitHub Actionsと連携したい')">GitHub Actions</span>
+    <span onclick="setQuery('メモリ・コンテキストの管理')">メモリ管理</span>
+    <span onclick="setQuery('セキュリティ設定')">セキュリティ</span>
+  </div>
+
+  <div id="results">
+    <div class="state-msg">
+      <div class="icon">📚</div>
+      上のボックスに質問を入力してください
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ページ一覧はリアルタイムで llms.txt から取得するため静的リストは不要
+
+const queryEl = document.getElementById('query');
+const searchBtn = document.getElementById('searchBtn');
+const resultsEl = document.getElementById('results');
+
+function setQuery(text) {
+  queryEl.value = text;
+  queryEl.focus();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showLoading() {
+  resultsEl.innerHTML = `<div class="state-msg"><div class="spinner"></div>AIが最適なページを探しています…</div>`;
+}
+
+function showEmpty() {
+  resultsEl.innerHTML = `<div class="state-msg"><div class="icon">🔍</div>関連するページが見つかりませんでした。<br>別のキーワードを試してみてください。</div>`;
+}
+
+async function search() {
+  const q = queryEl.value.trim();
+  if (!q) { showToast('質問を入力してください'); return; }
+
+  showLoading();
+  searchBtn.disabled = true;
+
+  // AIがllms.txtを読んで関連ページを特定
+  const prompt = `あなたはClaude Codeの公式ドキュメントナビゲーターです。
+
+まず web_search ツールを使って https://code.claude.com/docs/llms.txt を取得し、
+その最新のページ一覧を把握してください。
+
+その上で、以下のユーザーの質問に対して最も関連性の高いページを3〜5件選び、
+JSON形式のみで返答してください（前後に説明文不要）。
+
+ユーザーの質問: 「${q}」
+
+返答フォーマット（JSONのみ）:
+{
+  "results": [
+    {
+      "url": "https://code.claude.com/docs/ja/ページパス（.mdなし）",
+      "desc": "このページで何ができるか・何がわかるかを、初めて Claude Code を使う人にも伝わるように日本語で2〜3文で説明する。専門用語は使わず、具体的に書くこと。",
+      "relevance": "high" | "mid" | "low",
+      "reason": "ユーザーの質問に対してこのページがどう役立つかを50文字以内で具体的に説明"
+    }
+  ]
+}
+
+注意:
+- URLは必ず /en/ を /ja/ に変換して返すこと
+- 返すURLは必ずllms.txtに記載されているページのみにすること。llms.txtにないURLは絶対に返さないこと`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 2000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    let finalContent = data.content;
+
+    if (data.stop_reason === 'tool_use') {
+      const toolUseBlocks = data.content.filter(b => b.type === 'tool_use');
+      const toolResults = toolUseBlocks.map(b => ({ type: 'tool_result', tool_use_id: b.id, content: '' }));
+      const res2 = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json"},
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [
+            { role: "user", content: prompt },
+            { role: "assistant", content: data.content },
+            { role: "user", content: toolResults }
+          ]
+        })
+      });
+      const data2 = await res2.json();
+      finalContent = data2.content;
+    }
+
+    const text = finalContent.filter(b => b.type === 'text').map(b => b.text).join('');
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) { showEmpty(); return; }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (!parsed.results || parsed.results.length === 0) { showEmpty(); return; }
+
+    const relLabel = { high: '最適', mid: '関連', low: '参考' };
+    let html = `<div class="results-header">
+      <span class="results-count"><strong>${parsed.results.length}</strong> 件のページが見つかりました</span>
+    </div><div class="cards">`;
+
+    parsed.results.forEach((r) => {
+      const relClass = `rel-${r.relevance}`;
+      const displayUrl = r.url.replace('https://', '');
+      html += `<a class="card" href="${r.url}" target="_blank" rel="noopener">
+        <div class="card-top">
+          <div class="card-title">${displayUrl}</div>
+          <div class="relevance ${relClass}">${relLabel[r.relevance] || r.relevance}</div>
+        </div>
+        <div class="card-desc">${r.desc}</div>
+        <div class="card-reason">💡 ${r.reason}</div>
+      </a>`;
+    });
+
+    html += '</div>';
+    resultsEl.innerHTML = html;
+
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="state-msg"><div class="icon">⚠️</div>エラーが発生しました。<br>もう一度試してください。</div>`;
+    console.error(e);
+  } finally {
+    searchBtn.disabled = false;
+  }
+}
+
+searchBtn.addEventListener('click', search);
+queryEl.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+</script>
+</body>
+</html>
